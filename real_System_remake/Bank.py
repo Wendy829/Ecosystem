@@ -231,7 +231,7 @@ class Bank:
     def get_reward(self):
         decay = self.reward_decay ** self.step
         for key in self.total_reward:
-            self.total_reward[key] += self.reward[key] * decay
+            self.total_reward[key] += self.reward[key]
         self.step += 1
         return self.reward_train
 
