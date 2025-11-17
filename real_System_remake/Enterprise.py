@@ -380,69 +380,24 @@ class Enterprise:
             self.reward_train['economy'] = (1 + bonus_factor) * self.reward['economy']
             self.reward_train['business'] = (1 + bonus_factor) * self.reward['business']
 
-        # 最终生存奖励 目前最优情况
-        # if day == lim_day -2 :
-        #     self.reward['economy'] += lim_day * 0.2 / 80 # 额外奖
-        #     self.reward['business'] += lim_day * 0.2 / 80
-
         if day == lim_day -2 :
             self.reward_train['economy'] += lim_day * 0.2 / 80 # 额外奖
             self.reward_train['business'] += lim_day * 0.2 / 80
 
         return self.reward
 
-    # 预留字段：将一个智能体任务分成两个计算reward
-    # def custom_reward(self, day,lim_day):
-    #     self.reward = {}
-    #     # self.reward['economy'] = self.business_profit + self.economy_profit
-    #     self.reward['economy'] = self.revenue * 1 - self.last_cost
-    #     # self.reward['economy'] = self.output
-    #     # self.reward['business'] = self.output
-    #     # self.reward['business'] = 2*self.business_profit + self.economy_profit
-    #     # self.reward['business'] = self.revenue * 2 -self.last_cost
-    #     # self.reward['business'] = (self.revenue * 2 - self.last_cost + self.economy_profit)
-    #     # 10.8 将business替换为这个，和师姐的保持一致
-    #     self.reward['business'] = self.revenue
-    #     if day >= lim_day * 0.95:
-    #         self.reward['economy']  = self.reward['economy']+ day * 0.1
-    #         self.reward['business'] = self.reward['business'] + day * 0.1
-    #     self.reward['economy'] /= 100
-    #     self.reward['business'] /= 100
-
     # 这个total reward用来在回合结束之后展示
     def get_reward(self):
-        #  decay reward衰减因子 越小,衰减的越慢
-        decay = self.reward_decay ** self.step  # ** 幂运算 decay = reward_decay的step次方
-        #  total_reward ： 包含economy和business的字典 {'economy':0,'business':0}
+        #  total_reward：作为纯外部评价标准
         for key in self.total_reward:
             self.total_reward[key] += self.reward[key]
-        self.step += 1
         return self.reward_train
-
-    # def get_fail_reward(self, day, lim_day):
-    #     reward = {}
-    #     if day ==lim_day:
-    #         decay = self.reward_decay ** self.step
-    #         for key in self.total_reward:
-    #             reward[key] = lim_day * 0.1
-    #             self.total_reward[key] += reward[key] * decay
-    #     elif self.is_fall:
-    #         decay = self.reward_decay ** self.step
-    #         for key in self.total_reward:
-    #             reward[key] = -10
-    #             self.total_reward[key] += reward[key] * decay
-    #     else:
-    #         for key in self.total_reward:
-    #             reward[key] = 0
-    #     return reward
 
     def get_fail_reward(self):
         reward = {}
         if self.is_fall:
-            decay = self.reward_decay ** self.step
             for key in self.total_reward:
                 reward[key] = -10
-                self.total_reward[key] += reward[key] * decay
         else:
             for key in self.total_reward:
                 reward[key] = 0
