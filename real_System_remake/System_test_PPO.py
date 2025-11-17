@@ -22,7 +22,8 @@ import torch.nn.functional as F
 from swanlab.plugin.notification import EmailCallback
 use_wandb = True
 use_rbtree = False
-lim_day = 150
+lim_day = 500
+# seed =125
 enterprise_ppo_config = Config_PPO(
     scope='',
     state_dim=0,
@@ -76,12 +77,12 @@ class System:
         # self.epiday=0 #回合数，在算法太垃圾的时候可以提前结束。
         self.e_execute = self.env.get_enterprise_execute()
         self.b_execute = self.env.get_bank_execute()
-        self.execute = self.e_execute + self.b_execute
+        self.execute = self.e_execute + self.b_execu
         self.Agent = {}
         for key in self.execute:
             self.Agent[key] = None
 
-    def run(self):
+    def run(self,seed=None):
         # 初始化邮件通知插件
         email_callback = EmailCallback(
             sender_email="1430074565@qq.com",
@@ -91,9 +92,8 @@ class System:
             port=587,
             language="zh",
         )
-        seed = random.randint(0, 1000)
         config = Config_PPO(scope='', state_dim=0, action_dim=0, hidden_dim=0)
-        wandb.init(project="TD3_vs_PPO", workspace="wx829", config={
+        wandb.init(project="CL_learn", workspace="wx829", config={
             "random_seed": seed,
             "is_rms_state": config.is_rms_state,
             "is_rms_reward": config.is_rms_reward,
@@ -133,13 +133,14 @@ class System:
                 config.set_state_dim(len(_temp_state[target_key]))
                 self.Agent[target_key] = bank_nnu(config)
 
-        # self.load_actor_only(save_dir="actors_only", note="")
+       # self.load_actor_only()
         # 3. 开始训练循环
         state = self.env.reset()
         time_step = 0
+        update_num= 0
         episode_num = 1
 
-        while time_step < total_step and episode_num < 255:
+        while time_step < total_step:
 
             # --- 数据收集阶段 ---
             for _ in range(update_timestep):
@@ -164,7 +165,7 @@ class System:
                     next_v[k] = self.Agent[k].get_value(next_state[k])
 
                 # NEW: 双掩码
-                is_terminal_for_gae = bool(info.get('terminated', done_env))  # 自然终止才截断 bootstrap
+                is_terminated = bool(info.get('terminated', done_env))  # 自然终止才截断 bootstrap
                 nonterminal = 0 if done_env else 1  # 结束(terminated 或 truncated)则断开 GAE 递推
 
                 # CHANGED: 存 transition（含 next_value 与 nonterminal）
@@ -175,8 +176,8 @@ class System:
                         sigmas[target_key],
                         action[target_key],
                         log_prob[target_key],
-                        reward[target_key]['days'],
-                        is_terminal_for_gae,
+                        reward[target_key]['eval_business'],
+                        is_terminated,
                         next_v[target_key],
                         nonterminal,
                     )
@@ -188,7 +189,7 @@ class System:
                         action[target_key],
                         log_prob[target_key],
                         reward[target_key]['WNDB'],
-                        is_terminal_for_gae,
+                        is_terminated,
                         next_v[target_key],
                         nonterminal,
                     )
@@ -208,7 +209,7 @@ class System:
                 agent.learn(state[agent_key])
                 agent.clear_memory()
 
-            if use_wandb:
+            if use_wandb and update_num % 5 ==0 :
                 critic_bank, actor_bank, avg_entropy_bank, clip_fraction_bank = self.Agent['bank1'].log()
                 critic_production1, actor_production1, avg_entropy_production1, clip_fraction_production1 = self.Agent[
                     'production1'].log()
@@ -231,12 +232,12 @@ class System:
                 wandb.log({'clip_fraction/consumption1': clip_fraction_consumption1})
 
             print("--- Update finished. ---")
-
+            update_num += 1
         # print("--- Training finished. Starting evaluation... ---")
         # for i in range(100):
         #     avg_len_det = self.evaluate_policy(episodes=10)
         #     wandb.log({"eval/final_avg_len_det": avg_len_det})
-
+        wandb.finish()
         # self.env.finish()
 
     @staticmethod
@@ -443,12 +444,11 @@ class System:
 
         return noisy_state
 
-    def save_actors(self, save_dir="actors_only", note=""):
+    def save_actors(self, save_dir="actors_only"):
         """
         保存所有智能体的 Actor 参数（仅用于评估）
         """
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        save_dir = save_dir + "_" + timestamp
+        save_dir = save_dir + "_" +"lim_day="+str(lim_day) +"_seed="+str(seed)
         os.makedirs(save_dir, exist_ok=True)
         for target_key in self.e_execute:
             agent = self.Agent[target_key]
@@ -462,35 +462,37 @@ class System:
             torch.save(agent.bank.actor.state_dict(), filename)
             print(f"[🎯] 已保存 {agent.scope} 的 actor 至 {filename}")
 
-    def load_actor_only(self, save_dir = "actors_only",note=""):
+    def load_actor_only(self, save_dir = "actors_only_lim_day=150_seed=451"):
         for target_key in self.e_execute:
             agent = self.Agent[target_key]
-            path = os.path.join(save_dir, f"{agent.scope}_actor_{note}.pt")
+            path = os.path.join(save_dir, f"{agent.scope}_actor.pt")
             if os.path.exists(path):
                 agent.enterprise.actor.load_state_dict(torch.load(path))
-                agent.enterprise.actor.eval()
+                agent.enterprise.actor.train()
                 print(f"[🎯] 加载 actor: {agent.scope}")
 
         for target_key in self.b_execute:
             agent = self.Agent[target_key]
-            path = os.path.join(save_dir, f"{agent.scope}_actor_{note}.pt")
+            path = os.path.join(save_dir, f"{agent.scope}_actor.pt")
             if os.path.exists(path):
                 agent.bank.actor.load_state_dict(torch.load(path))
-                agent.bank.actor.eval()
+                agent.bank.actor.train()
                 print(f"[🎯] 加载 actor: {agent.scope}")
 
 if __name__ == '__main__':
     # for i in range(3):
-    system = System()
-
-    system.run()
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    # system.save_actors()
-    # system.evaluate_policy(episodes=500, deterministic=False, threshold=180)
-    del system
-    gc.collect()
-    # 清空计算图
-    torch.nn.Module.dump_patches = True
-    torch.cuda.empty_cache()
+    seeds_to_run=[125,126]
+    for seed in seeds_to_run:
+        print(f"=== 启动 seed={seed} 的实验 ===")
+        system = System()
+        system.run(seed=seed)
+        # system.save_actors()
+        # system.evaluate_policy(episodes=500, deterministic=False, threshold=180)
+        del system
+        gc.collect()
+        # 清空计算图
+        torch.nn.Module.dump_patches = True
+        torch.cuda.empty_cache()
+        print(f"=== seed={seed} 实验结束 ===\n")
 
     # tf.reset_default_graph()
