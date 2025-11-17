@@ -77,7 +77,7 @@ class System:
         # self.epiday=0 #回合数，在算法太垃圾的时候可以提前结束。
         self.e_execute = self.env.get_enterprise_execute()
         self.b_execute = self.env.get_bank_execute()
-        self.execute = self.e_execute + self.b_execu
+        self.execute = self.e_execute + self.b_execute
         self.Agent = {}
         for key in self.execute:
             self.Agent[key] = None

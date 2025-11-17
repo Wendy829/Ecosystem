@@ -229,21 +229,16 @@ class Bank:
 
 
     def get_reward(self):
-        decay = self.reward_decay ** self.step
         for key in self.total_reward:
             self.total_reward[key] += self.reward[key]
-        self.step += 1
         return self.reward_train
 
 
     def get_fail_reward(self):
-        fail_reward = {'WNDB':0}
-        decay = self.reward_decay ** self.step
+        fail_reward = {'WNDB': -10}
         # for key in self.observation:
         #     if self.observation[key].is_falled():
         #         fail_reward['WNDB'] -= self.bond[key]
-        fail_reward['WNDB'] = -10
-        self.total_reward['WNDB'] += fail_reward['WNDB'] * decay
         return fail_reward
 
 
