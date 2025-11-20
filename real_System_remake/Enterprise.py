@@ -125,7 +125,7 @@ class Enterprise:
         self.state = []
         self.loss = {}
         self.last_output = 0
-        self.total_reward = {'economy': 0, 'business': 0, 'day_profit':0,"eval_business":0,"days":0}
+        self.total_reward = {'eval_business':0,'business':0}
         self.step = 0
         self.total_sales = 0
         self.reward = None
@@ -377,11 +377,9 @@ class Enterprise:
 
         if progress > 0.8:
             bonus_factor = (progress - 0.8) * 0.5  # 在80%→100%之间线性增至0.1倍
-            self.reward_train['economy'] = (1 + bonus_factor) * self.reward['economy']
             self.reward_train['business'] = (1 + bonus_factor) * self.reward['business']
 
         if day == lim_day -2 :
-            self.reward_train['economy'] += lim_day * 0.2 / 80 # 额外奖
             self.reward_train['business'] += lim_day * 0.2 / 80
 
         return self.reward

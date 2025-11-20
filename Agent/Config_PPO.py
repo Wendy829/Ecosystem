@@ -11,19 +11,19 @@ class Config_PPO:
                  gamma: float = 0.99,
                  lamda: float = 0.95,
 
-                 learning_rate_actor_bank: float = 0.00007,
-                 learning_rate_actor_enterprise: float = 0.00008,
-                 learning_rate_critic_bank: float = 0.0008,
-                 learning_rate_critic_enterprise: float = 9e-5,
+                 learning_rate_actor_bank: float = 0.000085,
+                 learning_rate_actor_enterprise: float = 0.0001,
+                 learning_rate_critic_bank: float = 0.00008,
+                 learning_rate_critic_enterprise: float = 0.00009,
                  mini_batch_size: int = 128,
 
                  # PPO核心参数
                  update_timestep: int = 2048,
                  max_training_steps: int = 2000000,
-                 total_step: int = 3000000,
+                 total_step: int = 3500000,
 
                  clip_range: float = 0.1,
-                 n_epochs: int = 8,
+                 n_epochs: int = 4,
 
                  entropy_enterprise: float = 0.0065,
                  entropy_bank: float = 0.0035,

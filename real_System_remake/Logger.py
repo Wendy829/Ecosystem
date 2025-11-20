@@ -130,7 +130,7 @@ class Logger:
         self.receive_data(episode=episode, day=day,target=target, save_into=self.data['enterprise']['runtime'], property_list=self.e_property, dict_list=self.e_dict)
 
     def receive_finish_enterprise(self ,episode:int, day:int, target: Enterprise):
-        self.receive_data(episode=episode, day=day,target=target, save_into=self.data['enterprise']['finish'], property_list=[], dict_list={'total_reward': ['day_profit']})
+        self.receive_data(episode=episode, day=day,target=target, save_into=self.data['enterprise']['finish'], property_list=[], dict_list={'total_reward': ['eval_business']})
 
     def receive_bank(self,episode:int, day:int, target: Bank):
         self.receive_data(episode=episode, day=day,target=target, save_into=self.data['bank']['runtime'], property_list=self.b_property, dict_list=self.b_dict)
@@ -347,7 +347,7 @@ class Logger:
 
         # 每百回合累计收益
         #   enterprise
-        reward_name_list = ['累计奖励_day_profit']
+        reward_name_list = ['累计奖励_eval_business']
         target_name_list = ['生产企业1', '消费企业1', '生产企业2', '消费企业2']
         enterprise_reward_mul = 100
         try:
@@ -359,13 +359,13 @@ class Logger:
                         count += (reward[i] * enterprise_reward_mul)
                     res = count/100
                     if target_name == '生产企业1':
-                        wandb.log({'每百回合/累计利润/生产企业1':res})
+                        wandb.log({'每百回合/综合收益/生产企业1':res})
                     elif target_name == '消费企业1':
-                        wandb.log({'每百回合/累计利润/消费企业1': res})
+                        wandb.log({'每百回合/综合收益/消费企业1': res})
                     elif target_name == '生产企业2':
-                        wandb.log({'每百回合/累计利润/生产企业2':res})
+                        wandb.log({'每百回合/综合收益/生产企业2':res})
                     else:
-                        wandb.log({'每百回合/累计利润/消费企业2': res})
+                        wandb.log({'每百回合/综合收益/消费企业2': res})
         except KeyError:
             pass
         #    bank

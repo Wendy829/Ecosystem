@@ -22,7 +22,7 @@ import torch.nn.functional as F
 from swanlab.plugin.notification import EmailCallback
 use_wandb = True
 use_rbtree = False
-lim_day = 500
+lim_day = 300
 # seed =125
 enterprise_ppo_config = Config_PPO(
     scope='',
@@ -140,7 +140,7 @@ class System:
         update_num= 0
         episode_num = 1
 
-        while time_step < total_step:
+        while time_step < total_step and episode_num <=50000:
 
             # --- 数据收集阶段 ---
             for _ in range(update_timestep):
@@ -176,7 +176,7 @@ class System:
                         sigmas[target_key],
                         action[target_key],
                         log_prob[target_key],
-                        reward[target_key]['eval_business'],
+                        reward[target_key]['business'],
                         is_terminated,
                         next_v[target_key],
                         nonterminal,
@@ -481,7 +481,7 @@ class System:
 
 if __name__ == '__main__':
     # for i in range(3):
-    seeds_to_run=[125,126]
+    seeds_to_run=[105]
     for seed in seeds_to_run:
         print(f"=== 启动 seed={seed} 的实验 ===")
         system = System()

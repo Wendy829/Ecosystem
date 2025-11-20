@@ -104,8 +104,10 @@ class PPO:
         torch.backends.cudnn.benchmark = False
 
     def choose_action(self, state):
-
-        state = torch.tensor(state, dtype=torch.float).unsqueeze(0).to(self.device)
+        state_np = np.array(state,dtype=np.float32)
+        if self.is_rms:
+            state_np = self.rms.normalize(state_np)
+        state = torch.tensor(state_np, dtype=torch.float).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
             mu, sigma = self.actor(state)
@@ -165,6 +167,7 @@ class PPO:
         # 1. 从缓冲区获取并处理状态数据
         raw_old_states_np = np.array(self.states, dtype=np.float32)
         if self.is_rms:
+            self.rms.update(raw_old_states_np)
             normalized_old_states_np = self.rms.normalize(raw_old_states_np)
         else:
             normalized_old_states_np = raw_old_states_np
@@ -201,6 +204,7 @@ class PPO:
         advantages = torch.tensor(advantages, dtype=torch.float).to(self.device)
 
         returns = (advantages + state_values).detach()
+        returns = torch.clamp(returns, -1000.0, 1000.0)
 
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         advantages = torch.clamp(advantages, -10.0, 10.0)
@@ -310,10 +314,10 @@ class PPO:
             self.critic_scheduler.step()
 
         # === 模拟退火式 熵衰减 ===
-        progress = self.actor_scheduler.last_epoch / self.actor_scheduler.total_iters
-        decay_factor = max(0.0, 1.0 - progress)
-        self.entropyRC_Enterprise = self.entropy_start_enterprise * (0.3 + 0.7 * decay_factor)
-        self.entropyRC_Bank = self.entropy_start_bank * (0.3 + 0.7 * decay_factor)
+        # progress = self.actor_scheduler.last_epoch / self.actor_scheduler.total_iters
+        # decay_factor = max(0.0, 1.0 - progress)
+        # self.entropyRC_Enterprise = self.entropy_start_enterprise * (0.1 + 0.9 * decay_factor)
+        # self.entropyRC_Bank = self.entropy_start_bank * (0.1 + 0.9 * decay_factor)
         #【新增】诊断
         self.diagnose(old_states_tensor, old_actions, old_logprobs, agent_type)
 
