@@ -34,6 +34,10 @@ class Config_PPO:
 
                  # 随机种子
                  random_seed: int = None,
+                 #transformer层参数
+                 seq_len: int = 10,  # 回顾过去10个时间步的数据
+                 n_heads: int = 4,  # Transformer 多头注意力的头数
+                 n_layers: int = 2,  # Transformer Encoder 层数
                  ):
         self.total_step = total_step
         self.entropyRC_Bank = entropy_bank
@@ -64,6 +68,11 @@ class Config_PPO:
 
         self.is_rms_state = is_rms_state
         self.is_rms_reward = is_rms_reward
+
+        #transformer层参数
+        self.seq_len = seq_len
+        self.n_heads = n_heads
+        self.n_layers = n_layers
 
     def set_state_dim(self, state_dim: int):
         self.state_dim = state_dim

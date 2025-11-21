@@ -1,3 +1,7 @@
+from collections import deque
+
+import numpy as np
+
 from Agent import Config_PPO
 from Agent.PPO import PPO
 import warnings
@@ -15,14 +19,31 @@ clustered_devices = None
 
 class bank_nnu:
     def __init__(self, config: Config_PPO):
+        self.current_seq_state = None
         self.scope = config.scope
         self.bank = PPO(config=config)  # 生成num个mod
+        # === 新增：历史状态队列 ===
+        self.seq_len = config.seq_len if hasattr(config, 'seq_len') else 1
+        self.state_window = deque(maxlen=self.seq_len)
+        # 初始化填满0，防止一开始空报错
+        for _ in range(self.seq_len):
+            self.state_window.append(np.zeros(config.state_dim))
 
     def choose_action(self, state):
         # --- 【新增】函数，替换旧的 run_enterprise ---
-        action = self.bank.choose_action(state)
+        # action = self.bank.choose_action(state)
+        # 1. 更新窗口
+        self.state_window.append(state)
 
-        return action
+        # 2. 制作 Transformer 需要的 "State"
+        # shape: (10, 35)
+        seq_state = np.array(self.state_window)
+
+        # 3. 传给 Actor 选择动作
+        # 注意：这里要把 seq_state 存下来！不仅仅是 raw_state
+        self.current_seq_state = seq_state
+
+        return self.bank.choose_action(seq_state)
 
     def choose_action_deterministic(self, state):
         action = self.bank.choose_action_deterministic(state)
@@ -30,7 +51,7 @@ class bank_nnu:
         return action
 
     def store_transition(self, state,mu,sigma,action, logprob, reward, is_terminal, next_value, nonterminal):  # CHANGED
-        self.bank.store_transition(state,mu,sigma,action, logprob, reward, is_terminal, next_value, nonterminal)
+        self.bank.store_transition(self.current_seq_state,mu,sigma,action, logprob, reward, is_terminal, next_value, nonterminal)
 
     def get_value(self, state):  # NEW
         return self.bank.get_value(state)

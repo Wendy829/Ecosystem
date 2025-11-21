@@ -26,7 +26,7 @@ from new_calculate import *
 from Agent.TD3 import TD3
 from Agent.PPO import PPO
 from Agent.RuningMeanStd import RunningMeanStd
-
+from collections import deque
 # from Agent.TD3_attention import TD3 as TD3_attn
 # from Agent.TD3withoutNoise import TD3
 warnings.filterwarnings('ignore')
@@ -42,12 +42,22 @@ clustered_devices = None
 
 class enterprise_nnu:
     def __init__(self, config: Config_PPO):
+        self.current_seq_state = None
         self.scope = config.scope
         self.enterprise = PPO(config=config)  # 生成num个mod
         self.rms = RunningMeanStd(shape=33)
         # 添加一个控制归一化开关的标志，方便你测试对比效果
         self.is_rms = True  # 初始设置为 True，如果你想暂时关闭可以改为 False
-        self.device = "cpu"
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        # === 新增：历史状态队列 ===
+        self.seq_len = config.seq_len
+        self.state_window = deque(maxlen=self.seq_len)
+        # 初始化填满0，防止一开始空报错
+        for _ in range(self.seq_len):
+            self.state_window.append(np.zeros(config.state_dim))
+
+        # =======================
         # self.epi = None
         # self.last_state = None  # 银行家i的银行的上一个state
 
@@ -67,9 +77,21 @@ class enterprise_nnu:
     #
     #     return action
 
-    def choose_action(self, state):
+    def choose_action(self, raw_state):
         # --- 【新增】函数，替换旧的 run_enterprise ---
-        return self.enterprise.choose_action(state)
+        # return self.enterprise.choose_action(state)
+        # 1. 更新窗口
+        self.state_window.append(raw_state)
+
+        # 2. 制作 Transformer 需要的 "State"
+        # shape: (10, 35)
+        seq_state = np.array(self.state_window)
+
+        # 3. 传给 Actor 选择动作
+        # 注意：这里要把 seq_state 存下来！不仅仅是 raw_state
+        self.current_seq_state = seq_state
+
+        return self.enterprise.choose_action(seq_state)
 
     def choose_action_deterministic(self, state):
         action = self.enterprise.choose_action_deterministic(state)
@@ -77,7 +99,7 @@ class enterprise_nnu:
         return action
 
     def store_transition(self, state, mu,sigma,action, logprob, reward, is_terminal, next_value, nonterminal):  # CHANGED
-        self.enterprise.store_transition(state, mu,sigma,action, logprob, reward, is_terminal, next_value, nonterminal)
+        self.enterprise.store_transition(self.current_seq_state, mu,sigma,action, logprob, reward, is_terminal, next_value, nonterminal)
 
     def get_value(self, state):  # NEW
         return self.enterprise.get_value(state)

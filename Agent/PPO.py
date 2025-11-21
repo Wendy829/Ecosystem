@@ -62,11 +62,29 @@ class PPO:
         self.avg_clip_frac = 0.0
 
         # 设备（GPU/CPU）
-        # self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.device = 'cpu'
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        #self.device = 'cpu'
         # 初始化网络和优化器
-        self.actor = PolicyNet(self.state_dim, self.hidden_dim, self.action_dim).to(self.device)
-        self.critic = ValueNet(self.state_dim, self.hidden_dim).to(self.device)
+        # self.actor = PolicyNet(self.state_dim, self.hidden_dim, self.action_dim).to(self.device)
+        # self.critic = ValueNet(self.state_dim, self.hidden_dim).to(self.device)
+        # === 修改网络初始化逻辑 ===
+        # 如果配置了 seq_len > 1，说明要用时序模型
+        if hasattr(config, 'seq_len') and config.seq_len > 1:
+            self.use_transformer = True
+            self.actor = TransformerPolicyNet(
+                config.state_dim, config.hidden_dim, config.action_dim,
+                config.seq_len, config.n_heads, config.n_layers
+            ).to(self.device)
+            self.critic = TransformerValueNet(
+                config.state_dim, config.hidden_dim,
+                config.seq_len, config.n_heads, config.n_layers
+            ).to(self.device)
+        else:
+            # 旧逻辑
+            self.use_transformer = False
+            self.actor = PolicyNet(self.state_dim, self.hidden_dim, self.action_dim).to(self.device)
+            self.critic = ValueNet(self.state_dim, self.hidden_dim).to(self.device)
+        # ========================
         if config.scope == 'bank1':
             self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.learning_rate_actor_bank)
             self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.learning_rate_critic_bank)
@@ -445,3 +463,66 @@ class ValueNet(torch.nn.Module):
     def forward(self, x):
         x = F.relu(self.fc1(x))
         return self.fc2(x)
+
+
+# === 新增 Transformer 网络结构 ===
+class TransformerPolicyNet(torch.nn.Module):
+    def __init__(self, state_dim, hidden_dim, action_dim, seq_len, n_heads, n_layers):
+        super().__init__()
+        # 1. 特征映射: 将原始特征维度映射到 hidden_dim
+        self.embedding = torch.nn.Linear(state_dim, hidden_dim)
+
+        # 2. 位置编码 (Positional Encoding)
+        # shape: [1, seq_len, hidden_dim]
+        self.pos_embedding = torch.nn.Parameter(torch.randn(1, seq_len, hidden_dim))
+
+        # 3. Transformer Encoder
+        encoder_layer = torch.nn.TransformerEncoderLayer(
+            d_model=hidden_dim,
+            nhead=n_heads,
+            batch_first=True  # 关键: 输入格式为 [batch, seq, feature]
+        )
+        self.transformer_encoder = torch.nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
+
+        # 4. 输出层
+        self.fc_mu = torch.nn.Linear(hidden_dim, action_dim)
+        self.fc_std = torch.nn.Linear(hidden_dim, action_dim)
+
+    def forward(self, x):
+        # x shape: [batch_size, seq_len, state_dim]
+
+        # Embedding + Positional Encoding
+        # 注意：广播机制会自动处理 batch 维度
+        x = self.embedding(x) + self.pos_embedding
+
+        # Transformer 提取特征
+        # output: [batch_size, seq_len, hidden_dim]
+        x = self.transformer_encoder(x)
+
+        # 聚合策略: 这里简单地取最后一个时间步 (Most recent step)
+        # 也可以尝试 Global Average Pooling: x = x.mean(dim=1)
+        x = x[:, -1, :]
+
+        # 输出动作分布
+        raw_mu = self.fc_mu(x)
+        raw_std = torch.clamp(self.fc_std(x), -20, 2)
+        std = F.softplus(raw_std) + 0.01
+        return raw_mu, std
+
+
+class TransformerValueNet(torch.nn.Module):
+    def __init__(self, state_dim, hidden_dim, seq_len, n_heads, n_layers):
+        super().__init__()
+        self.embedding = torch.nn.Linear(state_dim, hidden_dim)
+        self.pos_embedding = torch.nn.Parameter(torch.randn(1, seq_len, hidden_dim))
+
+        encoder_layer = torch.nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=n_heads, batch_first=True)
+        self.transformer_encoder = torch.nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
+
+        self.fc_out = torch.nn.Linear(hidden_dim, 1)
+
+    def forward(self, x):
+        x = self.embedding(x) + self.pos_embedding
+        x = self.transformer_encoder(x)
+        x = x[:, -1, :]
+        return self.fc_out(x)

@@ -29,6 +29,11 @@ enterprise_ppo_config = Config_PPO(
     state_dim=0,
     action_dim=4,
     hidden_dim=128,
+    # === 开启 Transformer ===
+    seq_len=10,  # 比如设为10天
+    n_heads=4,
+    n_layers=2
+    # ======================
     # 第一次调用时再初始化agent，以便动态适应状态空间)
 )
 
