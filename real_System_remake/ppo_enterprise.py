@@ -23,7 +23,7 @@ import pandas as pd
 # import tensorflow as tf
 from new_calculate import *
 # from Agent.DDPG import DDPG
-from Agent.TD3 import TD3
+# from Agent.TD3 import TD3
 from Agent.PPO import PPO
 from Agent.RuningMeanStd import RunningMeanStd
 from collections import deque
@@ -53,9 +53,9 @@ class enterprise_nnu:
         # === 新增：历史状态队列 ===
         self.seq_len = config.seq_len
         self.state_window = deque(maxlen=self.seq_len)
-        # 初始化填满0，防止一开始空报错
-        for _ in range(self.seq_len):
-            self.state_window.append(np.zeros(config.state_dim))
+        # # 初始化填满0，防止一开始空报错
+        # for _ in range(self.seq_len):
+        #     self.state_window.append(np.zeros(config.state_dim))
 
         # =======================
         # self.epi = None
@@ -80,8 +80,17 @@ class enterprise_nnu:
     def choose_action(self, raw_state):
         # --- 【新增】函数，替换旧的 run_enterprise ---
         # return self.enterprise.choose_action(state)
-        # 1. 更新窗口
-        self.state_window.append(raw_state)
+        # --- 【修改逻辑】 ---
+
+        # 如果窗口是空的（刚开始），或者之前的都是初始化的0（如果保留原逻辑）
+        # 建议直接判断 len 或增加一个 reset 标志
+        if len(self.state_window) == 0:
+            # 冷启动：用当前第一帧状态填满整个历史窗口
+            for _ in range(self.seq_len):
+                self.state_window.append(raw_state)
+        else:
+            # 正常步进
+            self.state_window.append(raw_state)
 
         # 2. 制作 Transformer 需要的 "State"
         # shape: (10, 35)
@@ -120,3 +129,7 @@ class enterprise_nnu:
 
     # def get_show(self):
     #     return self.enterprise.check_show()
+
+    # 【新增方法】专门用于回合结束时清空历史
+    def reset_window(self):
+        self.state_window.clear()

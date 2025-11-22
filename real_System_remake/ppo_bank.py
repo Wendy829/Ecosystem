@@ -25,15 +25,20 @@ class bank_nnu:
         # === 新增：历史状态队列 ===
         self.seq_len = config.seq_len if hasattr(config, 'seq_len') else 1
         self.state_window = deque(maxlen=self.seq_len)
-        # 初始化填满0，防止一开始空报错
-        for _ in range(self.seq_len):
-            self.state_window.append(np.zeros(config.state_dim))
 
     def choose_action(self, state):
         # --- 【新增】函数，替换旧的 run_enterprise ---
         # action = self.bank.choose_action(state)
-        # 1. 更新窗口
-        self.state_window.append(state)
+
+        # 1. 更新状态窗口
+        # 【修改】加入冷启动逻辑
+        # 如果是新回合第一步(window为空)，用当前状态填满整个窗口
+        # 这样 Transformer 就会认为"过去一直是这个状态"，而不是"过去全是0"
+        if len(self.state_window) == 0:
+            for _ in range(self.seq_len):
+                self.state_window.append(state)
+        else:
+            self.state_window.append(state)
 
         # 2. 制作 Transformer 需要的 "State"
         # shape: (10, 35)
@@ -69,3 +74,6 @@ class bank_nnu:
         critic_loss, actor_loss = self.bank.get_loss()
         avg_entropy, avg_clip_frac = self.bank.get_test_indicator()
         return critic_loss, actor_loss, avg_entropy, avg_clip_frac
+
+    def reset_window(self):
+        self.state_window.clear()

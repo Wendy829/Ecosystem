@@ -88,15 +88,6 @@ class System:
             self.Agent[key] = None
 
     def run(self,seed=None):
-        # 初始化邮件通知插件
-        email_callback = EmailCallback(
-            sender_email="1430074565@qq.com",
-            receiver_email="1430074565@qq.com",
-            password="clsbsjgkvsvhihig",
-            smtp_server="smtp.qq.com",
-            port=587,
-            language="zh",
-        )
         config = Config_PPO(scope='', state_dim=0, action_dim=0, hidden_dim=0)
         wandb.init(project="CL_learn", workspace="wx829", config={
             "random_seed": seed,
@@ -116,7 +107,7 @@ class System:
             "update_timestep": config.UPDATE_TIMESTEP,
             "total_update": config.MAX_TRAINING_STEPS / config.UPDATE_TIMESTEP,
             "lim-day": lim_day
-        },callbacks=[email_callback])
+        })
         # 1. PPO 超参数
         update_timestep = config.UPDATE_TIMESTEP
         # max_training_timesteps = config.MAX_TRAINING_STEPS
@@ -203,7 +194,13 @@ class System:
 
                 if done_env:
                     print(f"Episode {episode_num} finished. Total timesteps: {time_step}")
+                    #1. 环境重置
                     state = self.env.reset()
+                    # 2. 【关键】重置所有智能体的历史窗口
+                    for target_key in self.e_execute:
+                        self.Agent[target_key].reset_window()
+                    for target_key in self.b_execute:
+                        self.Agent[target_key].reset_window()
                     episode_num += 1
 
 
