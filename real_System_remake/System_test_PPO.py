@@ -22,17 +22,17 @@ import torch.nn.functional as F
 from swanlab.plugin.notification import EmailCallback
 use_wandb = True
 use_rbtree = False
-lim_day = 300
+lim_day = 100
 # seed =125
 enterprise_ppo_config = Config_PPO(
     scope='',
     state_dim=0,
     action_dim=4,
-    hidden_dim=128,
+    hidden_dim=64,
     # === 开启 Transformer ===
-    seq_len=10,  # 比如设为10天
-    n_heads=4,
-    n_layers=2
+    seq_len=5,  # 比如设为10天
+    n_heads=2,
+    n_layers=1
     # ======================
     # 第一次调用时再初始化agent，以便动态适应状态空间)
 )
@@ -41,7 +41,7 @@ bank_ppo_config = Config_PPO(
     scope='',
     state_dim=0,
     action_dim=2,
-    hidden_dim=128,
+    hidden_dim=64,
 
 )
 
