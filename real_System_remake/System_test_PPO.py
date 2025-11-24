@@ -29,12 +29,6 @@ enterprise_ppo_config = Config_PPO(
     state_dim=0,
     action_dim=4,
     hidden_dim=64,
-    # === 开启 Transformer ===
-    seq_len=5,  # 比如设为10天
-    n_heads=2,
-    n_layers=1
-    # ======================
-    # 第一次调用时再初始化agent，以便动态适应状态空间)
 )
 
 bank_ppo_config = Config_PPO(
@@ -106,7 +100,13 @@ class System:
             "mini_batch": config.MINI_BATCH_SIZE,
             "update_timestep": config.UPDATE_TIMESTEP,
             "total_update": config.MAX_TRAINING_STEPS / config.UPDATE_TIMESTEP,
-            "lim-day": lim_day
+            "lim-day": lim_day,
+            "gamma":config.GAMMA,
+            "lambda":config.LAMDA,
+            #transformer参数
+            "trans_seq_len":config.seq_len,
+            "trans_n_heads":config.n_heads,
+            "trans_n_layers":config.n_layers
         })
         # 1. PPO 超参数
         update_timestep = config.UPDATE_TIMESTEP
@@ -483,7 +483,7 @@ class System:
 
 if __name__ == '__main__':
     # for i in range(3):
-    seeds_to_run=[398]
+    seeds_to_run=[105]
     for seed in seeds_to_run:
         print(f"=== 启动 seed={seed} 的实验 ===")
         system = System()
