@@ -81,9 +81,8 @@ class System:
         for key in self.execute:
             self.Agent[key] = None
         # 评估配置项
-        self.eval_interval_steps = 5000
-        self.eval_episodes = 5
-        self.eval_deterministic = False   # 默认 False
+        self.eval_interval_steps = 10000
+
 
     #新增“构建独立环境”的函数
     def _build_env(self, name: str):
@@ -267,7 +266,7 @@ class System:
 
 
         # 用训练步数对齐横轴
-        wandb.log(wandb_payload, step=int(steps))
+        wandb.log(wandb_payload, step=int(steps/10000))
 
         # ========= 9) 恢复训练窗口（关键：继续未完成训练回合） =========
         self._restore_agent_windows(window_snap)
@@ -565,7 +564,7 @@ class System:
 
 if __name__ == '__main__':
     # for i in range(3):
-    seeds_to_run=[105]
+    seeds_to_run=[981,891]
     for seed in seeds_to_run:
         print(f"=== 启动 seed={seed} 的实验 ===")
         system = System()
