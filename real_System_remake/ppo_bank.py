@@ -51,7 +51,15 @@ class bank_nnu:
         return self.bank.choose_action(seq_state)
 
     def choose_action_deterministic(self, state):
-        action = self.bank.choose_action_deterministic(state)
+        if len(self.state_window) == 0:
+            for _ in range(self.seq_len):
+                self.state_window.append(state)
+        else:
+            self.state_window.append(state)
+
+            # 2. 制作 Transformer 需要的 "State"
+        seq_state = np.array(self.state_window)
+        action = self.bank.choose_action_deterministic(seq_state)
 
         return action
 

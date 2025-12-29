@@ -81,8 +81,8 @@ class System:
         for key in self.execute:
             self.Agent[key] = None
         # 评估配置项
-        self.eval_interval_steps = 10000,
-        self.eval_deterministic = True,
+        self.eval_interval_steps = 10000
+        self.eval_deterministic = True
 
 
 
